@@ -1,0 +1,800 @@
+# SOUNDHUB - TECHNICAL DOCUMENTATION
+
+## 📋 **TỔNG QUAN DỰ ÁN**
+
+**Tên dự án:** SoundHub - Website bán thiết bị âm thanh  
+**Công nghệ:** Java Servlet + JSP + MySQL + Bootstrap 5  
+**Kiến trúc:** MVC Pattern + DAO Pattern  
+**Database:** MySQL với 6 tables chính  
+
+---
+
+## 🗄️ **CẤU TRÚC DATABASE**
+
+### **1. users**
+```sql
+CREATE TABLE users (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    phone VARCHAR(15),
+    password VARCHAR(255) NOT NULL,  -- BCrypt hashed
+    role VARCHAR(20) DEFAULT 'user'  -- 'user' hoặc 'admin'
+);
+```
+
+### **2. categories**
+```sql
+CREATE TABLE categories (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL
+);
+-- Data: 1='Tai nghe Bluetooth', 2='Tai nghe có dây', 3='Loa Bluetooth'
+```
+
+### **3. products**
+```sql
+CREATE TABLE products (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(200) NOT NULL,
+    price DECIMAL(10,2) NOT NULL,
+    image VARCHAR(255),
+    category_id INT,
+    status TINYINT DEFAULT 1,  -- 1=active, 0=inactive
+    quantity INT DEFAULT 0,
+    FOREIGN KEY (category_id) REFERENCES categories(id)
+);
+```
+
+### **4. cart_items**
+```sql
+CREATE TABLE cart_items (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT DEFAULT 1,
+    added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_cart (user_id, product_id)
+);
+```
+
+### **5. orders**
+```sql
+CREATE TABLE orders (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT,
+    total_amount DECIMAL(10,2),
+    shipping_fee DECIMAL(10,2),
+    payment_method VARCHAR(50),  -- 'COD' hoặc 'Chuyển khoản'
+    status VARCHAR(20) DEFAULT 'pending',  -- pending/confirmed/shipping/delivered/cancelled
+    shipping_address TEXT,
+    phone VARCHAR(15),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+```
+
+### **6. order_items**
+```sql
+CREATE TABLE order_items (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    order_id INT,
+    product_id INT,
+    quantity INT,
+    price DECIMAL(10,2),  -- Giá tại thời điểm đặt hàng
+    FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+);
+```
+
+---
+
+## 🏗️ **KIẾN TRÚC CODE**
+
+### **Package Structure:**
+```
+src/java/
+├── controller/          # Servlets xử lý HTTP requests
+├── data/
+│   ├── dao/            # Interfaces định nghĩa operations
+│   ├── impl/           # Implementations của DAO interfaces
+│   ├── driver/         # MySQL connection
+│   └── utils/          # BCrypt, Validation utilities
+└── model/              # POJOs (Plain Old Java Objects)
+
+web/
+├── views/              # JSP pages chính
+│   ├── admin/          # Admin pages
+│   └── *.jsp           # User pages
+├── inc/                # Include files (components)
+│   ├── admin/          # Admin components
+│   └── *.jsp           # Shared components
+├── assets/             # Static resources
+│   ├── css/
+│   ├── js/
+│   └── img/
+└── WEB-INF/
+    └── web.xml         # Servlet mappings
+```
+
+---
+
+## 👤 **CHỨC NĂNG USER**
+
+### **1. AUTHENTICATION**
+
+#### **Đăng ký (Register)**
+**URL:** `/register`  
+**Method:** GET (hiển thị form), POST (xử lý đăng ký)  
+**Servlet:** `RegisterServlet`
+
+**Flow chi tiết:**
+```
+1. GET /register → RegisterServlet.doGet()
+   → Forward tới views/register.jsp
+   → Hiển thị form đăng ký
+
+2. User điền form → POST /register
+   → RegisterServlet.doPost()
+   → Validation: email format, phone format, password strength
+   → Check email đã tồn tại: UserDAO.findByEmail()
+   → Hash password: BCrypt.hashpw()
+   → Insert user: UserDAO.insert()
+   → Redirect tới login với success message
+```
+
+**Code key:**
+```java
+// RegisterServlet.doPost()
+String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt());
+boolean success = Database.getUserDAO().insert(name, email, phone, hashedPassword, "user");
+```
+
+#### **Đăng nhập (Login)**
+**URL:** `/login`  
+**Method:** GET, POST  
+**Servlet:** `LoginServlet`
+
+**Flow chi tiết:**
+```
+1. POST /login với email + password
+   → LoginServlet.doPost()
+   → UserDAO.login(email, password)
+   → SQL: SELECT * FROM users WHERE email = ?
+   → BCrypt.checkpw(inputPassword, dbPassword)
+   → Nếu đúng: session.setAttribute("user", userObject)
+   → Redirect theo role: admin → admin-dashboard, user → home
+```
+
+#### **Đăng xuất (Logout)**
+**URL:** `/logout`  
+**Servlet:** `LogoutServlet`
+
+**Flow:**
+```
+GET /logout → session.invalidate() → Redirect home
+```
+
+### **2. BROWSING & SEARCH**
+
+#### **Trang chủ (Home)**
+**URL:** `/home` hoặc `/`  
+**Servlet:** `HomeServlet`
+
+**Flow:**
+```
+1. HomeServlet.doGet()
+   → ProductDAO.findAll() - Lấy tất cả sản phẩm active
+   → CategoryDAO.findAll() - Lấy danh mục
+   → Set attributes cho JSP
+   → Forward tới views/home.jsp
+```
+
+#### **Danh sách sản phẩm**
+**URL:** `/products`  
+**Servlet:** `ProductServlet`
+
+**Flow:**
+```
+1. GET /products → Hiển thị tất cả
+2. GET /products?category=1 → Lọc theo danh mục
+   → ProductDAO.findByCategoryId(1)
+   → SQL: SELECT * FROM products WHERE category_id = ? AND status = 1
+```
+
+#### **Tìm kiếm**
+**URL:** `/search?keyword=JBL`  
+**Servlet:** `SearchServlet`
+
+**Flow:**
+```
+SearchServlet.doGet()
+→ String keyword = request.getParameter("keyword")
+→ ProductDAO.searchByKeyword(keyword)
+→ SQL: SELECT * FROM products WHERE name LIKE '%JBL%' AND status = 1
+```
+
+### **3. SHOPPING CART**
+
+#### **Xem giỏ hàng**
+**URL:** `/cart`  
+**Method:** GET  
+**Servlet:** `CartServlet`
+
+**Flow:**
+```
+1. CartServlet.doGet()
+   → Check user login: session.getAttribute("user")
+   → CartItemDAO.getCartItems(userId)
+   → SQL: SELECT ci.*, p.* FROM cart_items ci 
+           JOIN products p ON ci.product_id = p.id 
+           WHERE ci.user_id = ?
+   → Tính tổng tiền: sum(price * quantity)
+   → Forward tới views/cart.jsp
+```
+
+#### **Thêm vào giỏ hàng**
+**URL:** `/cart`  
+**Method:** POST  
+**Parameters:** `action=add`, `productId=123`, `quantity=2`
+
+**Flow chi tiết:**
+```
+1. Form submit từ product page:
+   <form action="cart" method="POST">
+       <input type="hidden" name="action" value="add">
+       <input type="hidden" name="productId" value="123">
+       <input type="number" name="quantity" value="2">
+   </form>
+
+2. CartServlet.doPost()
+   → String action = request.getParameter("action")
+   → if ("add".equals(action))
+   → int productId = Integer.parseInt(request.getParameter("productId"))
+   → CartItemDAO.addToCart(userId, productId, quantity)
+
+3. CartItemDAO.addToCart():
+   → Check existing: SELECT quantity FROM cart_items WHERE user_id=? AND product_id=?
+   → If exists: UPDATE cart_items SET quantity = quantity + ? WHERE user_id=? AND product_id=?
+   → If not: INSERT INTO cart_items (user_id, product_id, quantity) VALUES (?, ?, ?)
+
+4. Redirect: response.sendRedirect("cart?success=added")
+```
+
+#### **Cập nhật số lượng**
+**Parameters:** `action=update`, `productId=123`, `quantity=5`
+
+**Flow:**
+```
+CartServlet.doPost() → action="update"
+→ CartItemDAO.updateQuantity(userId, productId, newQuantity)
+→ SQL: UPDATE cart_items SET quantity = ? WHERE user_id = ? AND product_id = ?
+```
+
+#### **Xóa khỏi giỏ hàng**
+**Parameters:** `action=remove`, `productId=123`
+
+**Flow:**
+```
+CartServlet.doPost() → action="remove"
+→ CartItemDAO.removeFromCart(userId, productId)
+→ SQL: DELETE FROM cart_items WHERE user_id = ? AND product_id = ?
+```
+
+### **4. CHECKOUT & ORDERS**
+
+#### **Trang thanh toán**
+**URL:** `/checkout`  
+**Method:** GET (hiển thị), POST (xử lý)  
+**Servlet:** `CheckoutServlet`
+
+**GET Flow:**
+```
+1. CheckoutServlet.doGet()
+   → Check login: if (user == null) redirect login
+   → Lấy cart: CartItemDAO.getCartItems(userId)
+   → If cart empty: redirect cart
+   → Tính tổng: subtotal + shipping fee (30,000đ)
+   → Set attributes: cartItems, subtotal, shippingFee, total
+   → Forward tới views/checkout.jsp
+```
+
+**POST Flow (Đặt hàng):**
+```
+1. User điền form checkout:
+   - address: "123 Nguyễn Văn Linh, Q7, TP.HCM"
+   - phone: "0909123456"  
+   - payment: "COD" hoặc "Chuyển khoản"
+
+2. CheckoutServlet.doPost()
+   → Validation: address, phone, payment không empty
+   → Lấy cart items: CartItemDAO.getCartItems(userId)
+   → Tính tổng tiền: calculateTotal(cartItems)
+   
+3. Tạo Order:
+   → Order order = new Order(userId, total, shippingFee, paymentMethod, address, phone)
+   → int orderId = OrderDAO.createOrder(order)
+   
+4. OrderDAO.createOrder():
+   → SQL: INSERT INTO orders (user_id, total_amount, shipping_fee, payment_method, 
+           shipping_address, phone) VALUES (?, ?, ?, ?, ?, ?)
+   → Return generated order ID
+
+5. Tạo Order Items:
+   → Convert cart items to order items
+   → OrderDAO.addOrderItems(orderId, orderItems)
+   → SQL: INSERT INTO order_items (order_id, product_id, quantity, price) VALUES (?, ?, ?, ?)
+
+6. Clear cart:
+   → CartItemDAO.clearCart(userId)
+   → SQL: DELETE FROM cart_items WHERE user_id = ?
+
+7. Redirect success:
+   → response.sendRedirect("order-success?id=" + orderId)
+```
+
+#### **Trang đặt hàng thành công**
+**URL:** `/order-success?id=15`  
+**Servlet:** `OrderSuccessServlet`
+
+**Flow:**
+```
+1. OrderSuccessServlet.doGet()
+   → int orderId = Integer.parseInt(request.getParameter("id"))
+   → Order order = OrderDAO.getOrderById(orderId)
+   → Check ownership: order.getUserId() == user.getId()
+   → Load order items: OrderDAO.getOrderItemsByOrderId(orderId)
+   → Forward tới views/order-success.jsp
+```
+
+#### **Lịch sử đơn hàng**
+**URL:** `/order-history`  
+**Servlet:** `OrderHistoryServlet`
+
+**GET Flow:**
+```
+1. OrderHistoryServlet.doGet()
+   → List<Order> orders = OrderDAO.getOrdersByUserId(userId)
+   → SQL: SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC
+   → For each order: load order items
+   → Forward tới views/order-history.jsp
+```
+
+**POST Flow (Hủy đơn hàng):**
+```
+1. User click "Hủy đơn hàng" → POST với action=cancel, orderId=15
+2. OrderHistoryServlet.doPost()
+   → Check ownership: order belongs to user
+   → Check status: chỉ hủy được pending/confirmed
+   → OrderDAO.updateOrderStatus(orderId, "cancelled")
+   → SQL: UPDATE orders SET status = 'cancelled' WHERE id = ?
+```
+
+### **5. PROFILE MANAGEMENT**
+
+#### **Xem/Sửa hồ sơ**
+**URL:** `/profile`  
+**Servlet:** `ProfileServlet`
+
+**GET Flow:**
+```
+ProfileServlet.doGet() → Forward tới views/profile.jsp
+→ JSP hiển thị thông tin user từ session
+```
+
+**POST Flow:**
+```
+1. User sửa name, phone → POST /profile
+2. ProfileServlet.doPost()
+   → Validation: name not empty, phone format
+   → UserDAO.updateProfile(userId, name, phone)
+   → SQL: UPDATE users SET name = ?, phone = ? WHERE id = ?
+   → Update session: session.setAttribute("user", updatedUser)
+```
+
+#### **Đổi mật khẩu**
+**URL:** `/change-password`  
+**Servlet:** `ChangePasswordServlet`
+
+**Flow:**
+```
+1. User nhập: oldPassword, newPassword, confirmPassword
+2. ChangePasswordServlet.doPost()
+   → Validation: passwords match, strength check
+   → Verify old password: BCrypt.checkpw(oldPassword, user.getPassword())
+   → Hash new password: BCrypt.hashpw(newPassword, BCrypt.gensalt())
+   → UserDAO.updatePassword(userId, hashedNewPassword)
+   → SQL: UPDATE users SET password = ? WHERE id = ?
+```
+
+---
+
+## 👨💼 **CHỨC NĂNG ADMIN**
+
+### **1. DASHBOARD**
+
+#### **Admin Dashboard**
+**URL:** `/admin-dashboard`  
+**Servlet:** `AdminDashboardServlet`
+
+**Flow:**
+```
+1. AdminDashboardServlet.doGet()
+   → Check admin role: if (!"admin".equals(user.getRole())) redirect login
+   → Get statistics:
+     - totalProducts = ProductDAO.findAll().size()
+     - totalOrders = OrderDAO.getAllOrders().size()  
+     - totalUsers = UserDAO.findAll().size()
+   → Set attributes cho JSP
+   → Forward tới views/admin-dashboard.jsp
+```
+
+### **2. PRODUCT MANAGEMENT**
+
+#### **Danh sách sản phẩm Admin**
+**URL:** `/admin-products`  
+**Servlet:** `AdminProductServlet`
+
+**GET Flow:**
+```
+AdminProductServlet.doGet()
+→ List<Product> products = ProductDAO.findAll()  // Bao gồm cả inactive
+→ List<Category> categories = CategoryDAO.findAll()
+→ Forward tới views/admin/admin-products.jsp
+```
+
+#### **Thêm sản phẩm**
+**Method:** POST  
+**Parameters:** `action=add`, `name`, `price`, `categoryId`, `quantity`, `image` (file upload)
+
+**Flow chi tiết:**
+```
+1. Admin điền form thêm sản phẩm + upload ảnh
+2. AdminProductServlet.doPost() → action="add"
+   
+3. File Upload Processing:
+   → Part filePart = request.getPart("image")
+   → String fileName = extractFileName(filePart)
+   → String uploadPath = getServletContext().getRealPath("/assets/img/")
+   → filePart.write(uploadPath + fileName)
+
+4. Insert Database:
+   → ProductDAO.insert(name, fileName, price, quantity, true, categoryId)
+   → SQL: INSERT INTO products (name, image, price, quantity, status, category_id) 
+           VALUES (?, ?, ?, ?, ?, ?)
+
+5. Redirect: response.sendRedirect("admin-products?success=added")
+```
+
+#### **Sửa sản phẩm**
+**Parameters:** `action=update`, `id`, `name`, `price`, `categoryId`, `quantity`, `status`
+
+**Flow:**
+```
+1. AdminProductServlet.doPost() → action="update"
+2. ProductDAO.update(id, name, image, price, quantity, status, categoryId)
+3. SQL: UPDATE products SET name=?, image=?, price=?, quantity=?, status=?, category_id=? WHERE id=?
+```
+
+#### **Xóa sản phẩm**
+**Parameters:** `action=delete`, `id`
+
+**Flow:**
+```
+1. AdminProductServlet.doPost() → action="delete"
+2. ProductDAO.delete(id)
+3. SQL: DELETE FROM products WHERE id = ?
+   (Hoặc soft delete: UPDATE products SET status = 0 WHERE id = ?)
+```
+
+### **3. USER MANAGEMENT**
+
+#### **Danh sách người dùng**
+**URL:** `/admin-users`  
+**Servlet:** `AdminUserServlet`
+
+**GET Flow:**
+```
+AdminUserServlet.doGet()
+→ List<User> users = UserDAO.findAll()
+→ SQL: SELECT * FROM users ORDER BY id DESC
+→ Forward tới views/admin/admin-users.jsp
+```
+
+#### **Đổi role user**
+**Parameters:** `action=changeRole`, `userId`, `newRole`
+
+**Flow:**
+```
+1. Admin chọn role từ dropdown → POST
+2. AdminUserServlet.doPost() → action="changeRole"
+3. UserDAO.updateRole(userId, newRole)
+4. SQL: UPDATE users SET role = ? WHERE id = ?
+```
+
+#### **Đổi mật khẩu user**
+**Parameters:** `action=changePassword`, `userId`, `newPassword`
+
+**Flow:**
+```
+1. Admin nhập mật khẩu mới → POST
+2. AdminUserServlet.doPost() → action="changePassword"
+3. String hashedPassword = BCrypt.hashpw(newPassword, BCrypt.gensalt())
+4. UserDAO.updatePassword(userId, hashedPassword)
+5. SQL: UPDATE users SET password = ? WHERE id = ?
+```
+
+### **4. ORDER MANAGEMENT**
+
+#### **Danh sách đơn hàng**
+**URL:** `/admin-orders`  
+**Servlet:** `AdminOrderServlet`
+
+**GET Flow:**
+```
+1. AdminOrderServlet.doGet()
+   → List<Order> orders = OrderDAO.getAllOrders()
+   → SQL: SELECT * FROM orders ORDER BY created_at DESC
+   → For each order: load order items và user info
+   → Forward tới views/admin/admin-orders.jsp
+```
+
+#### **Cập nhật trạng thái đơn hàng**
+**Parameters:** `action=updateStatus`, `orderId`, `status`
+
+**Flow:**
+```
+1. Admin chọn status từ dropdown → Auto submit form
+2. AdminOrderServlet.doPost() → action="updateStatus"
+3. OrderDAO.updateOrderStatus(orderId, newStatus)
+4. SQL: UPDATE orders SET status = ? WHERE id = ?
+
+Status flow: pending → confirmed → shipping → delivered
+Hoặc: pending/confirmed → cancelled
+```
+
+### **5. CATEGORY MANAGEMENT**
+
+#### **Quản lý danh mục**
+**URL:** `/admin-categories`  
+**Servlet:** `AdminCategoryServlet`
+
+**Chức năng:**
+- Xem danh sách categories
+- Thêm category mới
+- Sửa tên category
+- Xóa category (nếu không có sản phẩm)
+
+---
+
+## 🔐 **SECURITY FEATURES**
+
+### **1. Authentication & Authorization**
+
+#### **Session Management:**
+```java
+// Login thành công
+session.setAttribute("user", userObject);
+
+// Check login ở mọi protected page
+User user = (User) session.getAttribute("user");
+if (user == null) {
+    response.sendRedirect("login");
+    return;
+}
+
+// Check admin role
+if (!"admin".equals(user.getRole())) {
+    response.sendRedirect("login");
+    return;
+}
+```
+
+#### **Password Security:**
+```java
+// Đăng ký: Hash password
+String hashedPassword = BCrypt.hashpw(plainPassword, BCrypt.gensalt());
+
+// Đăng nhập: Verify password  
+boolean isValid = BCrypt.checkpw(inputPassword, storedHashedPassword);
+```
+
+### **2. Input Validation**
+
+#### **Email Validation:**
+```java
+private boolean isValidEmail(String email) {
+    String emailRegex = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$";
+    return email.matches(emailRegex);
+}
+```
+
+#### **Phone Validation:**
+```java
+private boolean isValidPhone(String phone) {
+    String phoneRegex = "^[0-9]{10,11}$";
+    return phone.matches(phoneRegex);
+}
+```
+
+#### **SQL Injection Prevention:**
+```java
+// Sử dụng PreparedStatement
+String sql = "SELECT * FROM users WHERE email = ?";
+PreparedStatement ps = connection.prepareStatement(sql);
+ps.setString(1, email);  // Tự động escape special characters
+```
+
+### **3. File Upload Security**
+
+#### **Image Upload Validation:**
+```java
+// Check file type
+String contentType = filePart.getContentType();
+if (!contentType.startsWith("image/")) {
+    throw new ServletException("Chỉ cho phép upload file ảnh");
+}
+
+// Check file size (max 5MB)
+if (filePart.getSize() > 5 * 1024 * 1024) {
+    throw new ServletException("File quá lớn");
+}
+
+// Generate safe filename
+String fileName = System.currentTimeMillis() + "_" + originalFileName;
+```
+
+---
+
+## 🎨 **FRONTEND FEATURES**
+
+### **1. Responsive Design**
+- Bootstrap 5 grid system
+- Mobile-first approach
+- Responsive navigation
+- Adaptive forms và tables
+
+### **2. User Experience**
+- Loading states
+- Success/Error messages
+- Form validation feedback
+- Smooth transitions
+- Sticky navigation
+
+### **3. JavaScript Features**
+
+#### **Cart Operations:**
+```javascript
+// Add to cart với AJAX
+function addToCart(productId, quantity) {
+    fetch('/soundhub/cart', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: `action=add&productId=${productId}&quantity=${quantity}`
+    })
+    .then(response => {
+        if (response.redirected) {
+            window.location.href = response.url;
+        }
+    });
+}
+```
+
+#### **Form Validation:**
+```javascript
+// Client-side validation
+function validateForm() {
+    const email = document.getElementById('email').value;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    
+    if (!emailRegex.test(email)) {
+        showError('Email không hợp lệ');
+        return false;
+    }
+    return true;
+}
+```
+
+---
+
+## 🚀 **DEPLOYMENT & CONFIGURATION**
+
+### **1. Database Setup**
+```sql
+-- Tạo database
+CREATE DATABASE soundhub CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- Import structure và data
+mysql -u root -p soundhub < soundhub_database.sql
+```
+
+### **2. Application Configuration**
+
+#### **MySQL Connection (MySQLDriver.java):**
+```java
+private static final String URL = "jdbc:mysql://localhost:3306/soundhub";
+private static final String USERNAME = "root";
+private static final String PASSWORD = "";
+```
+
+#### **File Upload Path:**
+```java
+String uploadPath = getServletContext().getRealPath("/assets/img/");
+```
+
+### **3. Web.xml Configuration**
+```xml
+<!-- Servlet mappings -->
+<servlet-mapping>
+    <servlet-name>HomeServlet</servlet-name>
+    <url-pattern>/home</url-pattern>
+</servlet-mapping>
+
+<!-- File upload configuration -->
+<multipart-config>
+    <max-file-size>5242880</max-file-size>  <!-- 5MB -->
+    <max-request-size>10485760</max-request-size>  <!-- 10MB -->
+</multipart-config>
+```
+
+---
+
+## 📊 **PERFORMANCE OPTIMIZATION**
+
+### **1. Database Optimization**
+- Indexes trên foreign keys
+- Connection pooling
+- Prepared statements
+- Batch operations cho bulk inserts
+
+### **2. Frontend Optimization**
+- CSS/JS minification
+- Image optimization
+- Lazy loading
+- Caching static resources
+
+### **3. Memory Management**
+- Proper connection closing
+- Session timeout configuration
+- Garbage collection optimization
+
+---
+
+## 🐛 **ERROR HANDLING**
+
+### **1. Exception Handling**
+```java
+try {
+    // Database operations
+} catch (SQLException e) {
+    e.printStackTrace();
+    session.setAttribute("error", "Có lỗi xảy ra với cơ sở dữ liệu");
+    response.sendRedirect("error-page");
+}
+```
+
+### **2. User-Friendly Error Messages**
+- Validation errors hiển thị rõ ràng
+- Success messages sau các actions
+- 404/500 error pages custom
+- Graceful degradation
+
+---
+
+## 📈 **FUTURE ENHANCEMENTS**
+
+### **Có thể mở rộng:**
+1. **Email notifications** cho đơn hàng
+2. **Payment gateway** integration
+3. **Product reviews** và ratings
+4. **Inventory management** tự động
+5. **Sales reports** và analytics
+6. **Multi-language** support
+7. **Mobile app** API
+8. **Real-time notifications**
+
+---
+
+**Tài liệu này cung cấp cái nhìn toàn diện về SoundHub từ database đến frontend, từ authentication đến business logic. Mỗi chức năng đều được giải thích chi tiết về flow, code, và SQL operations.**

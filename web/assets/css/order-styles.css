@@ -1,0 +1,62 @@
+/* Order related styles */
+.order-card {
+    transition: all 0.3s ease;
+    border: none !important;
+}
+
+.order-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1) !important;
+}
+
+.order-status-badge {
+    font-size: 0.75rem;
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+}
+
+.order-item-image {
+    border-radius: 8px;
+    object-fit: cover;
+}
+
+.checkout-sidebar {
+    position: sticky;
+    top: 2rem;
+}
+
+.order-summary {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 10px;
+    padding: 1rem;
+}
+
+.btn-order {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    transition: all 0.3s ease;
+}
+
+.btn-order:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 5px 15px rgba(0,123,255,0.3);
+}
+
+.form-control:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
+}
+
+@media (max-width: 768px) {
+    .checkout-sidebar {
+        position: static;
+        margin-top: 2rem;
+    }
+    
+    .order-items {
+        max-height: 200px !important;
+    }
+}
