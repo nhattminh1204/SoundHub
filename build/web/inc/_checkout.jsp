@@ -1,4 +1,5 @@
 <%@taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt" %>
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 
 <div class="container py-4">
@@ -67,7 +68,7 @@
                     <div class="order-items" style="max-height: 300px; overflow-y: auto;">
                         <c:forEach var="item" items="${cartItems}">
                             <div class="d-flex align-items-center mb-3 pb-2 border-bottom">
-                                <img src="${pageContext.request.contextPath}/assets/img/${item.product.image}" 
+                                <img src="./assets/img/${item.product.image}" 
                                      class="rounded me-2" width="40" height="40" style="object-fit: cover;">
                                 <div class="flex-grow-1">
                                     <h6 class="mb-0 small">${item.product.name}</h6>

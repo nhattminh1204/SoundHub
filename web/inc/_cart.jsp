@@ -3,7 +3,8 @@
 
 <div class="container py-5">
     <h2 class="mb-4">Giỏ hàng của bạn</h2>
-    
+
+    <!-- Nếu giỏ hàng trống -->
     <c:if test="${empty cartItems}">
         <div class="text-center py-5">
             <i class="fas fa-shopping-cart fa-3x text-muted mb-3"></i>
@@ -12,16 +13,18 @@
             <a href="products" class="btn btn-primary">Mua sắm ngay</a>
         </div>
     </c:if>
-    
+
+    <!-- Nếu giỏ hàng có sản phẩm -->
     <c:if test="${not empty cartItems}">
         <div class="row">
             <div class="col-lg-8">
+                <!--Hiển thị tất cả các sản phẩm trong giỏ hàng-->
                 <c:forEach var="item" items="${cartItems}">
                     <div class="card mb-3">
                         <div class="card-body">
                             <div class="row align-items-center">
                                 <div class="col-md-2">
-                                    <img src="${pageContext.request.contextPath}/assets/img/${item.product.image}" 
+                                    <img src="./assets/img/${item.product.image}" 
                                          class="img-fluid rounded" alt="${item.product.name}">
                                 </div>
                                 <div class="col-md-4">
@@ -30,26 +33,56 @@
                                 </div>
                                 <div class="col-md-3">
                                     <div class="input-group">
-                                        <button class="btn btn-outline-secondary" type="button" onclick="updateQuantity(${item.product.id}, ${item.quantity - 1})"
-                                                style="border-bottom-left-radius: 0.5rem; border-top-left-radius: 0.5rem">-</button>
-                                        <input type="text" class="form-control text-center" value="${item.quantity}" onchange="updateQuantity(${item.product.id}, this.value)">
-                                        <button class="btn btn-outline-secondary" type="button" onclick="updateQuantity(${item.product.id}, ${item.quantity + 1})">+</button>
+                                        <!-- Nút giảm -->
+                                        <form method="post" action="cart" class="d-inline">
+                                            <input type="hidden" name="action" value="update">
+                                            <input type="hidden" name="productId" value="${item.product.id}">
+                                            <input type="hidden" name="quantity" value="${item.quantity - 1}">
+                                            <button class="btn btn-outline-secondary" type="submit"
+                                                    style="border-bottom-left-radius: 0.5rem; border-top-left-radius: 0.5rem;
+                                                    border-bottom-right-radius: 0; border-top-right-radius: 0;
+                                                    height: 52px"
+                                                    ${item.quantity == 1 ? "disabled" : ""}>-</button>
+                                        </form>
+                                        
+                                        <!-- Input số lượng -->
+                                        <form method="post" action="cart" class="d-inline">
+                                            <input type="hidden" name="action" value="update">
+                                            <input type="hidden" name="productId" value="${item.product.id}">
+                                            <input type="number" class="form-control text-center" name="quantity" 
+                                                   value="${item.quantity}" min="1" max="99" onchange="this.form.submit()"
+                                                   style="border-radius: 0; align-content: center; justify-content: center">
+                                        </form>
+                                        
+                                        <!-- Nút tăng -->
+                                        <form method="post" action="cart" class="d-inline">
+                                            <input type="hidden" name="action" value="update">
+                                            <input type="hidden" name="productId" value="${item.product.id}">
+                                            <input type="hidden" name="quantity" value="${item.quantity + 1}">
+                                            <button class="btn btn-outline-secondary" style="height: 52px" type="submit"
+                                                    ${item.quantity == 99 ? "disabled" : ""}>+</button>
+                                        </form>
                                     </div>
                                 </div>
                                 <div class="col-md-2">
                                     <strong><span data-price="${item.subTotal}"></span></strong>
                                 </div>
                                 <div class="col-md-1">
-                                    <button class="btn btn-outline-danger btn-sm" onclick="removeFromCart(${item.product.id})">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
+                                    <form method="post" action="cart" class="d-inline">
+                                        <input type="hidden" name="action" value="remove">
+                                        <input type="hidden" name="productId" value="${item.product.id}">
+                                        <button class="btn btn-outline-danger btn-sm" type="submit">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </c:forEach>
             </div>
-            
+
+            <!-- THANH TOÁN -->
             <div class="col-lg-4">
                 <div class="card">
                     <div class="card-header">
@@ -77,5 +110,4 @@
     </c:if>
 </div>
 
-<script src="${pageContext.request.contextPath}/assets/js/cart.js"></script>
 <script src="${pageContext.request.contextPath}/assets/js/price-formatter.js"></script>

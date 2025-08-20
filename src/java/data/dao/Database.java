@@ -1,5 +1,6 @@
 package data.dao;
 
+import data.impl.CartItemImpl;
 import data.impl.CategoryImpl;
 import data.impl.OrderImpl;
 import data.impl.ProductImpl;
@@ -20,5 +21,9 @@ public class Database {
     
     public static UserDAO getUserDAO() {
         return new UserImpl();
+    }
+    
+    public static CartItemDAO getCartItemDAO() {
+        return new CartItemImpl();
     }
 }

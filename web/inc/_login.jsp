@@ -10,11 +10,8 @@
                         <h2 class="text-gradient">Đăng Nhập</h2>
                         <p class="text-muted">Chào mừng bạn quay trở lại!</p>
                     </div>
-
-                    <c:import url="/inc/user-alert.jsp" />
-                    <c:import url="/inc/error-display.jsp" />
                     
-                    <!-- Error Message Display -->
+                    <!-- Hiển thị thông báo lỗi -->
                     <c:if test="${login_error != null}">
                         <div class="alert alert-danger alert-dismissible fade show" role="alert">
                             <i class="fas fa-exclamation-triangle me-2"></i>
@@ -23,6 +20,8 @@
                         </div>
                     </c:if>
 
+                    <!-- FORM ĐĂNG NHẬP -->
+                    <!-- Gửi dữ liệu input emailphone và password đến /login -->
                     <form action="login" method="post" id="loginForm">
                         <div class="mb-3">
                             <label for="emailphone" class="form-label">
@@ -84,14 +83,6 @@
                             <a href="register" class="btn btn-outline-primary btn-custom">
                                 <i class="fas fa-user-plus me-2"></i>Đăng Ký Ngay
                             </a>
-                        </div>
-
-                        <div class="text-center mt-3">
-                            <small class="text-muted">
-                                <a href="admin-dashboard" class="text-decoration-none">
-                                    <i class="fas fa-cog me-1"></i>Đăng nhập Admin
-                                </a>
-                            </small>
                         </div>
                     </form>
 

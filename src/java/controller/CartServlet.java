@@ -1,6 +1,6 @@
 package controller;
 
-import data.impl.CartItemImpl;
+import data.dao.Database;
 import model.Cart;
 import model.Product;
 import model.User;
@@ -17,20 +17,18 @@ import jakarta.servlet.http.HttpSession;
 @WebServlet(name = "CartServlet", urlPatterns = {"/cart"})
 public class CartServlet extends HttpServlet {
 
-    private CartItemImpl cartDAO = new CartItemImpl();
-
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         
-        HttpSession session = request.getSession();
-        User user = (User) session.getAttribute("user");
+        User user = (User) request.getSession().getAttribute("user");
         
         if (user == null) {
-            response.sendRedirect("login?error=session");
+            response.sendRedirect("login");
             return;
         }
         
+        // Lấy ra giỏ hàng theo user
         List<Cart> cartItems = getCartItems(user);
         double total = cartItems.stream().mapToDouble(Cart::getSubTotal).sum();
         
@@ -44,17 +42,11 @@ public class CartServlet extends HttpServlet {
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         
+        // Lấy dữ liệu action ()
         String action = request.getParameter("action");
         HttpSession session = request.getSession();
         
-        if ("add".equals(action)) {
-            int productId = Integer.parseInt(request.getParameter("productId"));
-            int quantity = Integer.parseInt(request.getParameter("quantity"));
-            
-            addToCart(session, productId, quantity);
-            response.sendRedirect("cart?success=cart");
-            
-        } else if ("remove".equals(action)) {
+        if ("remove".equals(action)) {
             int productId = Integer.parseInt(request.getParameter("productId"));
             removeFromCart(session, productId);
             response.sendRedirect("cart");
@@ -66,30 +58,20 @@ public class CartServlet extends HttpServlet {
             updateCart(session, productId, quantity);
             response.sendRedirect("cart");
             
-        } else if ("clear".equals(action)) {
-            clearCart(session);
-            response.sendRedirect("cart?success=clear");
         }
     }
     
     private List<Cart> getCartItems(User user) {
         if (user != null) {
-            return cartDAO.getCartItems(user.getId());
+            return Database.getCartItemDAO().getCartItems(user.getId());
         }
         return new ArrayList<>();
-    }
-    
-    private void addToCart(HttpSession session, int productId, int quantity) {
-        User user = (User) session.getAttribute("user");
-        if (user != null) {
-            cartDAO.addToCart(user.getId(), productId, quantity);
-        }
     }
     
     private void removeFromCart(HttpSession session, int productId) {
         User user = (User) session.getAttribute("user");
         if (user != null) {
-            cartDAO.removeFromCart(user.getId(), productId);
+            Database.getCartItemDAO().removeFromCart(user.getId(), productId);
         }
     }
     
@@ -97,17 +79,10 @@ public class CartServlet extends HttpServlet {
         User user = (User) session.getAttribute("user");
         if (user != null) {
             if (quantity <= 0) {
-                cartDAO.removeFromCart(user.getId(), productId);
+                Database.getCartItemDAO().removeFromCart(user.getId(), productId);
             } else {
-                cartDAO.updateQuantity(user.getId(), productId, quantity);
+                Database.getCartItemDAO().updateQuantity(user.getId(), productId, quantity);
             }
-        }
-    }
-    
-    private void clearCart(HttpSession session) {
-        User user = (User) session.getAttribute("user");
-        if (user != null) {
-            cartDAO.clearCart(user.getId());
         }
     }
 }

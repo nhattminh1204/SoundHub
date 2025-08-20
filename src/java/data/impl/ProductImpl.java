@@ -119,42 +119,6 @@ public class ProductImpl implements ProductDAO {
         }
     }
     
-    public List<Product> findByCategory(String category) {
-        List<Product> listProduct = new ArrayList<>();
-        int categoryId = getCategoryId(category);
-        
-        try {
-            String sql = "SELECT * FROM products WHERE category_id = ?";
-            PreparedStatement ps = con.prepareStatement(sql);
-            ps.setInt(1, categoryId);
-            ResultSet rs = ps.executeQuery();
-            
-            while (rs.next()) {
-                int id = rs.getInt("id");
-                String name = rs.getString("name");
-                String image = rs.getString("image");
-                double price = rs.getDouble("price");
-                int quantity = rs.getInt("quantity");
-                boolean status = rs.getBoolean("status");
-                int catId = rs.getInt("category_id");
-                
-                listProduct.add(new Product(id, name, image, price, quantity, status, catId));
-            }
-        } catch (SQLException ex) {
-            Logger.getLogger(ProductImpl.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        return listProduct;
-    }
-    
-    private int getCategoryId(String category) {
-        switch (category) {
-            case "truewireless": return 1;
-            case "coday": return 2;
-            case "chuptai": return 3;
-            default: return 0;
-        }
-    }
-    
     @Override
     public List<Product> findByCategoryId(int categoryId) {
         List<Product> listProduct = new ArrayList<>();
@@ -184,8 +148,10 @@ public class ProductImpl implements ProductDAO {
     
     @Override
     public List<Product> searchByKeyword(String keyword) {
+        // Tạo  danh sách rỗng
         List<Product> listProduct = new ArrayList<>();
         
+        // Truy vấn câu lệnh
         try {
             String sql = "SELECT * FROM products WHERE name LIKE ? AND status = 1";
             PreparedStatement ps = con.prepareStatement(sql);
@@ -193,6 +159,7 @@ public class ProductImpl implements ProductDAO {
             ps.setString(1, searchPattern);
             ResultSet rs = ps.executeQuery();
             
+            // Duyệt qua từng dòng kết quả
             while (rs.next()) {
                 int id = rs.getInt("id");
                 String name = rs.getString("name");
@@ -202,6 +169,7 @@ public class ProductImpl implements ProductDAO {
                 boolean status = rs.getBoolean("status");
                 int categoryId = rs.getInt("category_id");
                 
+                // Thêm sản phẩm vào danh sách
                 listProduct.add(new Product(id, name, image, price, quantity, status, categoryId));
             }
         } catch (SQLException ex) {

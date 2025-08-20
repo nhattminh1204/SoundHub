@@ -1,6 +1,7 @@
 package data.impl;
 
 import data.dao.CartItemDAO;
+import data.dao.Database;
 import data.driver.MySQLDriver;
 import model.Cart;
 import model.Product;
@@ -14,10 +15,11 @@ import java.util.List;
 public class CartItemImpl implements CartItemDAO {
     
     Connection con = MySQLDriver.getConnection();
-    ProductImpl productDAO = new ProductImpl();
 
     @Override
     public void addToCart(int userId, int productId, int quantity) {
+        // Thực hiện truy vấn câu lệnh
+        // Nếu trong bảng ghi đã tồn tại khóa thì không chèn thêm dòng mới mà tự động cộng thêm 1
         String sql = "INSERT INTO cart_items (user_id, product_id, quantity) VALUES (?, ?, ?) " +
                      "ON DUPLICATE KEY UPDATE quantity = quantity + ?";
         try (PreparedStatement ps = con.prepareStatement(sql)) {
@@ -33,7 +35,10 @@ public class CartItemImpl implements CartItemDAO {
 
     @Override
     public List<Cart> getCartItems(int userId) {
+        // Tạo danh sách giỏ hàng trống
         List<Cart> cartItems = new ArrayList<>();
+        
+        // Thực hiện truy vấn câu lệnh SQL để lấy ra giỏ hàng theo user_id
         String sql = "SELECT * FROM cart_items WHERE user_id = ?";
         
         try (PreparedStatement ps = con.prepareStatement(sql)) {
@@ -45,7 +50,8 @@ public class CartItemImpl implements CartItemDAO {
                 int productId = rs.getInt("product_id");
                 int quantity = rs.getInt("quantity");
                 
-                Product product = productDAO.search(productId);
+                // Lấy thông tin sản phẩm theo id
+                Product product = Database.getProductDAO().search(productId);
                 if (product != null) {
                     Cart cart = new Cart(id, userId, productId, quantity);
                     cart.setProduct(product);

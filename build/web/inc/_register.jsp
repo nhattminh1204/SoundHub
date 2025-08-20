@@ -11,7 +11,10 @@
                         <p class="text-muted">Tạo tài khoản để trải nghiệm mua sắm tuyệt vời</p>
                     </div>
 
+                    <!-- FORM ĐĂNG KÝ --> 
+                    <!--  Gửi dữ liệu name, email, phone, password và repassword đến /register-->
                     <form id="registerForm" method="post" action="register" novalidate>
+                        
                         <div class="mb-3">
                             <label for="name" class="form-label">
                                 <i class="fas fa-user me-2"></i>Họ tên

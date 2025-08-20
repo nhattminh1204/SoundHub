@@ -15,24 +15,25 @@ import java.sql.SQLException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-/**
- *
- * @author nhatt
- */
+
 public class UserImpl implements UserDAO {
 
     Connection con = MySQLDriver.getConnection();
     
     @Override
     public User find(String emailphone, String password) {
+        // Tạo câu lệnh SQL với 2 trường hợp
         String sql;
-
+        
+        // Nếu emailphone là email
         if (emailphone.contains("@")) {
-            sql = "SELECT * FROM users WHERE email=?";
+            sql = "SELECT * FROM users WHERE email= ? ";
+        // Nếu emailphone là SĐT     
         } else {
-            sql = "SELECT * FROM users WHERE phone=?";
+            sql = "SELECT * FROM users WHERE phone= ? ";
         }
 
+        // Thực hiện truy vấn với tham số emailphone được truyền vào câu lệnh SQL
         try {
             PreparedStatement ps = con.prepareStatement(sql);
             ps.setString(1, emailphone);
@@ -41,7 +42,7 @@ public class UserImpl implements UserDAO {
             if (rs.next()) {
                 String storedPassword = rs.getString("password");
                 
-                // So sánh mật khẩu trực tiếp
+                // Nếu đúng mật khẩu
                 if (password.equals(storedPassword)) {
                     int id = rs.getInt("id");
                     String name = rs.getString("name");
@@ -49,6 +50,7 @@ public class UserImpl implements UserDAO {
                     String phone = rs.getString("phone");
                     String role = rs.getString("role");
 
+                    // Trả về user (có dữ liệu)
                     return new User(id, name, email, phone, storedPassword, role);
                 }
             }

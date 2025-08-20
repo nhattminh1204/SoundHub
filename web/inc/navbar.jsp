@@ -28,11 +28,12 @@
                 </li>
             </ul>
 
-            <!-- Form tìm kiếm ở giữa -->
+            <!-- FORM TÌM KIẾM -->
+            <!-- Truyền dữ liệu keyword đến /search -->
             <form class="search-form mx-auto" action="search" method="get">
                 <div class="input-group">
                     <input class="form-control" type="text" name="keyword" placeholder="Tìm kiếm sản phẩm..."
-                           style="border: 1.5px solid #e2e8f0; border-radius: 18px 0px 0px 18px">
+                           style="border: 1.5px solid #e2e8f0; border-radius: 18px 0px 0px 18px" value="${keyword}">
                     <button class="btn" type="submit">
                         <i class="fas fa-search"></i>
                     </button>
@@ -75,6 +76,7 @@
                     </c:otherwise>
                 </c:choose>
 
+                <!-- Nếu chưa đăng nhập -->
                 <c:if test="${user == null}">
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -95,7 +97,8 @@
                         </ul>
                     </li>
                 </c:if>
-
+                
+                <!-- Nếu đã đăng nhập -->
                 <c:if test="${user != null}">
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">

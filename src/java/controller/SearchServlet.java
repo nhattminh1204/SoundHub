@@ -23,13 +23,15 @@ public class SearchServlet extends HttpServlet {
             throws ServletException, IOException {
         request.setAttribute("title", "SoundHub - Tìm kiếm");
         
+        // Nhận dữ liệu keyword
         String keyword = request.getParameter("keyword");
         
+        // Nếu keyword có dữ liệu
         if (keyword != null && !keyword.trim().isEmpty()) {
-            List<Category> listCate = Database.getCategoryDAO().findAll();
-            request.setAttribute("listCate", listCate);
-            
+            // Tìm kiếm danh sách sản phẩm theo keyword
             List<Product> searchResults = Database.getProductDAO().searchByKeyword(keyword);
+            
+            // Lưu các dữ liệu liên quan
             request.setAttribute("products", searchResults);
             request.setAttribute("keyword", keyword);
             request.setAttribute("resultCount", searchResults.size());

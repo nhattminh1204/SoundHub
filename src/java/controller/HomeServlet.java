@@ -30,14 +30,6 @@ public class HomeServlet extends HttpServlet {
         List<Product> allProducts = Database.getProductDAO().findAll();
         request.setAttribute("allProducts", allProducts);
         
-        List<Product> bluetoothProducts = ((data.impl.ProductImpl) Database.getProductDAO()).findByCategory("truewireless");
-        List<Product> wiredProducts = ((data.impl.ProductImpl) Database.getProductDAO()).findByCategory("coday");
-        List<Product> speakerProducts = ((data.impl.ProductImpl) Database.getProductDAO()).findByCategory("chuptai");
-        
-        request.setAttribute("bluetoothProducts", bluetoothProducts.subList(0, Math.min(4, bluetoothProducts.size())));
-        request.setAttribute("wiredProducts", wiredProducts.subList(0, Math.min(4, wiredProducts.size())));
-        request.setAttribute("speakerProducts", speakerProducts.subList(0, Math.min(4, speakerProducts.size())));
-        
         String id_category = (String) request.getParameter("id_category");
         request.setAttribute("id_category", id_category);
         

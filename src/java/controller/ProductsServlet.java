@@ -1,8 +1,6 @@
-
 package controller;
 
 import data.dao.Database;
-import data.impl.CartItemImpl;
 import java.io.IOException;
 import java.util.List;
 import jakarta.servlet.ServletException;
@@ -10,7 +8,6 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.util.ArrayList;
 import model.Product;
 import model.Category;
 import model.User;
@@ -23,28 +20,33 @@ public class ProductsServlet extends HttpServlet {
             throws ServletException, IOException {
         request.setAttribute("title", "SoundHub - Sản phẩm");
 
+        // Lấy ra tất cả danh mục
         List<Category> listCate = Database.getCategoryDAO().findAll();
         request.setAttribute("listCate", listCate);
-
+        
+        // Lấy ra tất cả sản phẩm
         List<Product> products = Database.getProductDAO().findAll();
         request.setAttribute("products", products);
 
-        // Category filter
-        String categoryParam = request.getParameter("category");
+        // Nhận dữ liệu idCategory (tìm sản phẩm theo danh mục)
         String idCategoryParam = request.getParameter("idCategory");
 
-        if (categoryParam != null && !categoryParam.isEmpty()) {
-            List<Product> filteredProducts = ((data.impl.ProductImpl) Database.getProductDAO()).findByCategory(categoryParam);
-            request.setAttribute("products", filteredProducts);
-            request.setAttribute("selectedCategory", categoryParam);
-        } else if (idCategoryParam != null && !idCategoryParam.isEmpty()) {
+        // Nếu idcate có giá trị
+        if (idCategoryParam != null && !idCategoryParam.isEmpty()) {
             Integer idCategory = Integer.parseInt(idCategoryParam);
+            
+            // Tìm kiếm sản phẩm theo danh mục
+            List<Product> filteredProducts = Database.getProductDAO().findByCategoryId(idCategory);
+            
+            // Lưu danh sách sản phẩm đã lọc và idCategory
+            request.setAttribute("products", filteredProducts);
             request.setAttribute("idCategory", idCategory);
         }
 
+        // Thêm vào giỏ hàng
         addProductToCart(request);
 
-        request.getRequestDispatcher("./views/products.jsp").forward(request, response);
+        request.getRequestDispatcher("./views/products.jsp").include(request, response);
     }
 
     @Override
@@ -53,6 +55,7 @@ public class ProductsServlet extends HttpServlet {
     }
 
     void addProductToCart(HttpServletRequest request) {
+        // Nhận dữ liệu id_product được truyền vào
         int id_product;
         try {
             id_product = Integer.parseInt(request.getParameter("id_product"));
@@ -60,13 +63,13 @@ public class ProductsServlet extends HttpServlet {
             id_product = 0;
         }
 
-        // Get user from session
+        // Lấy user hiện tại
         User user = (User) request.getSession().getAttribute("user");
 
+        // Nếu id_product thỏa mãn và đã đăng nhập
         if (id_product > 0 && user != null) {
-            // Add to database cart
-            CartItemImpl cartDAO = new CartItemImpl();
-            cartDAO.addToCart(user.getId(), id_product, 1);
+            // Thêm sản phẩm vào giỏ hàng
+            Database.getCartItemDAO().addToCart(user.getId(), id_product, 1);
         }
     }
 }

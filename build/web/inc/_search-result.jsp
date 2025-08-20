@@ -14,15 +14,17 @@
                     </a>
                 </div>
 
-                <!-- Search Info -->
+                <!-- Thông báo kết quả tìm được  -->
                 <div class="alert alert-info">
                     <i class="fas fa-info-circle me-2"></i>
                     Tìm thấy <strong>${resultCount}</strong> sản phẩm cho từ khóa "<strong>${keyword}</strong>"
                 </div>
 
-                <!-- Search Results -->
+                <!-- Kết quả tìm kiếm được -->
+                <!-- Nếu danh sách sản phẩm (tìm theo key) có sản phẩm -->
                 <c:if test="${products != null && products.size() > 0}">
                     <div class="row">
+                        <!-- Hiển thị tất cả sản phẩm trong danh sách -->
                         <c:forEach items="${products}" var="product">
                             <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
                                 <article class="card product-card border-0 shadow-sm h-100">
@@ -51,7 +53,7 @@
                     </div>
                 </c:if>
 
-                <!-- No Results -->
+                <!-- Nếu danh sách sản phẩm trống -->
                 <c:if test="${products == null || products.size() == 0}">
                     <div class="text-center py-5">
                         <i class="fas fa-search fa-3x text-muted mb-3"></i>

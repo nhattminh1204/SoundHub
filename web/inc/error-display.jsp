@@ -73,7 +73,6 @@
 </c:if>
 
 <script>
-// Auto clear errors from session after display
 <c:if test="${err_name != null || err_email != null || err_phone != null || err_password != null || err_emailphone != null || err_address != null || err_payment != null || err_price != null || err_quantity != null || err_category != null}">
 setTimeout(function() {
     <c:remove var="err_name" scope="session" />
